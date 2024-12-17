@@ -1,0 +1,123 @@
+DOCSHIELD PROPRIETARY SOFTWARE LICENSE
+Version 1.0, 2024
+
+Copyright (c) 2024 DocShield. All Rights Reserved.
+
+1. DEFINITIONS
+
+"Software" refers to the DocShield AI Voice Agent Worker software and associated documentation.
+"Licensee" refers to the authorized entity granted access to use the Software.
+"Protected Health Information" (PHI) has the meaning set forth in HIPAA regulations.
+"TCPA" refers to the Telephone Consumer Protection Act.
+
+2. GRANT OF LICENSE
+
+Subject to the terms and conditions of this License, DocShield grants Licensee a non-transferable, non-exclusive, revocable license to use the Software solely for Licensee's internal business operations.
+
+3. RESTRICTIONS
+
+Licensee shall not:
+a) Distribute, sublicense, or transfer the Software
+b) Modify, reverse engineer, or create derivative works
+c) Remove or alter any proprietary notices
+d) Use the Software in violation of applicable laws
+e) Share access credentials or bypass security measures
+f) Store or process data in violation of HIPAA or TCPA
+
+4. COMPLIANCE OBLIGATIONS
+
+4.1 HIPAA Compliance
+Licensee shall:
+- Implement required PHI safeguards
+- Conduct security risk assessments
+- Maintain audit logs
+- Follow breach notification procedures
+- Ensure patient privacy protections
+- Implement access controls
+
+4.2 TCPA Compliance
+Licensee shall:
+- Adhere to calling time restrictions
+- Maintain do-not-call list compliance
+- Obtain prior express consent
+- Provide automated calling disclosures
+- Issue call recording notifications
+- Implement opt-out mechanisms
+
+4.3 State Law Compliance
+Licensee shall comply with:
+- State-specific calling restrictions
+- Recording consent requirements
+- Data protection obligations
+- Professional licensing requirements
+- Insurance regulations
+- State-specific breach notifications
+
+5. DATA PROTECTION
+
+5.1 Security Requirements
+- Implement encryption for data at rest and in transit
+- Maintain access control systems
+- Regular security assessments
+- Incident response procedures
+- Secure data backup systems
+- Audit trail maintenance
+
+5.2 Data Handling
+- Proper storage of call recordings
+- Secure transmission of PHI
+- Compliant data retention periods
+- Secure disposal procedures
+- Access monitoring
+- Data breach protocols
+
+6. WARRANTY DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, ACCURACY, OR COMPLIANCE. DOCSHIELD MAKES NO WARRANTY THAT THE SOFTWARE WILL BE ERROR-FREE OR UNINTERRUPTED.
+
+7. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL DOCSHIELD BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING BUT NOT LIMITED TO PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+8. INDEMNIFICATION
+
+Licensee shall indemnify and hold harmless DocShield from any claims, damages, or expenses arising from:
+a) Violation of this License
+b) Regulatory non-compliance
+c) Unauthorized data disclosure
+d) Third-party claims
+e) Misuse of the Software
+
+9. TERMINATION
+
+9.1 This License terminates automatically upon:
+- Violation of any term
+- Regulatory compliance failure
+- Unauthorized access or use
+- License expiration
+- Written notice from DocShield
+
+9.2 Upon termination:
+- Cease all Software use
+- Delete all copies
+- Return confidential information
+- Maintain ongoing confidentiality
+- Complete data handling obligations
+
+10. SURVIVAL
+
+Sections regarding confidentiality, data protection, warranty disclaimers, liability limitations, and indemnification survive termination.
+
+11. GOVERNING LAW
+
+This License shall be governed by and construed in accordance with the laws of [State], without regard to conflicts of law principles.
+
+12. ENTIRE AGREEMENT
+
+This License constitutes the entire agreement between the parties concerning the Software and supersedes all prior agreements.
+
+For licensing inquiries contact:
+DocShield Legal Department
+[Contact Information]
+
+NOTICE: Unauthorized use, reproduction, or distribution of this Software may result in severe civil and criminal penalties, and will be prosecuted to the maximum extent possible under law.
