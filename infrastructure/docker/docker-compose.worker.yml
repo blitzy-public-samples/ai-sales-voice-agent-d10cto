@@ -1,0 +1,134 @@
+version: "3.8"
+
+services:
+  # DocShield AI Voice Agent Worker Service
+  worker:
+    build:
+      context: ../../src/backend
+      dockerfile: Dockerfile.worker
+      target: production
+    image: docshield-worker:latest
+    container_name: docshield-worker
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NODE_OPTIONS=--max-old-space-size=450
+      - TZ=UTC
+    env_file:
+      - .env
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1'
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+    healthcheck:
+      test: ["CMD", "node", "dist/lib/health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - docshield_network
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+
+  # MongoDB Database Service
+  mongodb:
+    image: mongo:6.0
+    container_name: docshield-mongodb
+    environment:
+      - MONGO_INITDB_DATABASE=docshield
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongo_root_username
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongo_root_password
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2'
+    networks:
+      - docshield_network
+    security_opt:
+      - no-new-privileges:true
+
+  # Redis Queue Service
+  redis:
+    image: redis:7.0-alpine
+    container_name: docshield-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1'
+    networks:
+      - docshield_network
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  mongodb_data:
+    name: docshield-mongodb-data
+    driver: local
+  mongodb_config:
+    name: docshield-mongodb-config
+    driver: local
+  redis_data:
+    name: docshield-redis-data
+    driver: local
+
+networks:
+  docshield_network:
+    name: docshield-network
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+
+secrets:
+  mongo_root_username:
+    file: ./secrets/mongo_root_username.txt
+  mongo_root_password:
+    file: ./secrets/mongo_root_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
