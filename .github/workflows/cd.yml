@@ -1,0 +1,174 @@
+name: CD
+
+# Trigger on successful CI workflow completion
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+env:
+  NODE_VERSION: '18.x'
+  HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  DEPLOY_TIMEOUT: '900'
+  HEALTH_CHECK_RETRIES: '5'
+  CIRCUIT_BREAKER_THRESHOLD: '3'
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    concurrency:
+      group: staging
+      cancel-in-progress: true
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      - name: Generate deployment correlation ID
+        run: echo "CORRELATION_ID=deploy-${{ github.run_id }}-${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Drain existing connections
+        run: |
+          chmod +x ./infrastructure/scripts/deploy.sh
+          ./infrastructure/scripts/deploy.sh drain-connections staging
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ env.DOCKER_REGISTRY }}/docshield-voice-agent:staging-${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/docshield-voice-agent:staging-cache
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/docshield-voice-agent:staging-cache,mode=max
+          build-args: |
+            NODE_ENV=staging
+            BUILD_ID=${{ env.CORRELATION_ID }}
+
+      - name: Deploy to Heroku Staging
+        run: |
+          heroku container:login
+          heroku container:push worker --app docshield-voice-agent-staging
+          heroku container:release worker --app docshield-voice-agent-staging
+
+      - name: Execute health checks
+        run: |
+          chmod +x ./infrastructure/scripts/health-check.sh
+          ./infrastructure/scripts/health-check.sh \
+            --app docshield-voice-agent-staging \
+            --retries ${{ env.HEALTH_CHECK_RETRIES }} \
+            --correlation-id ${{ env.CORRELATION_ID }}
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          chmod +x ./infrastructure/scripts/rollback.sh
+          ./infrastructure/scripts/rollback.sh \
+            --app docshield-voice-agent-staging \
+            --correlation-id ${{ env.CORRELATION_ID }}
+
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: 
+      name: production
+      url: https://docshield-voice-agent.herokuapp.com
+    concurrency:
+      group: production
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      - name: Generate deployment correlation ID
+        run: echo "CORRELATION_ID=deploy-${{ github.run_id }}-${{ github.run_number }}-prod" >> $GITHUB_ENV
+
+      - name: Verify business hours
+        run: |
+          HOUR=$(TZ=America/New_York date +%H)
+          if [ $HOUR -lt 9 ] || [ $HOUR -ge 17 ]; then
+            echo "Production deployments only allowed during business hours (9 AM - 5 PM ET)"
+            exit 1
+          fi
+
+      - name: Drain existing connections
+        run: |
+          chmod +x ./infrastructure/scripts/deploy.sh
+          ./infrastructure/scripts/deploy.sh drain-connections production
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ env.DOCKER_REGISTRY }}/docshield-voice-agent:prod-${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/docshield-voice-agent:prod-cache
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/docshield-voice-agent:prod-cache,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILD_ID=${{ env.CORRELATION_ID }}
+
+      - name: Deploy to Heroku Production
+        run: |
+          heroku container:login
+          heroku container:push worker --app docshield-voice-agent
+          heroku container:release worker --app docshield-voice-agent
+
+      - name: Execute comprehensive health checks
+        run: |
+          chmod +x ./infrastructure/scripts/health-check.sh
+          ./infrastructure/scripts/health-check.sh \
+            --app docshield-voice-agent \
+            --retries ${{ env.HEALTH_CHECK_RETRIES }} \
+            --correlation-id ${{ env.CORRELATION_ID }} \
+            --comprehensive
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          chmod +x ./infrastructure/scripts/rollback.sh
+          ./infrastructure/scripts/rollback.sh \
+            --app docshield-voice-agent \
+            --correlation-id ${{ env.CORRELATION_ID }} \
+            --verify-rollback
