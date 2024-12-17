@@ -1,0 +1,31 @@
+{
+  "watch": [
+    "src/**/*.ts",
+    "src/worker/**/*.ts", 
+    "src/shared/**/*.ts",
+    "src/types/**/*.ts"
+  ],
+  "ext": "ts",
+  "ignore": [
+    "node_modules/**/*",
+    "dist/**/*",
+    "coverage/**/*",
+    "tests/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/__tests__/**/*",
+    "**/__mocks__/**/*"
+  ],
+  "exec": "ts-node src/worker/index.ts",
+  "delay": "2000",
+  "env": {
+    "NODE_ENV": "development",
+    "TS_NODE_PROJECT": "./tsconfig.json",
+    "TS_NODE_TRANSPILE_ONLY": "true",
+    "DEBUG": "docshield:worker:*"
+  },
+  "verbose": true,
+  "restartable": "rs",
+  "legacyWatch": false,
+  "signal": "SIGTERM"
+}
