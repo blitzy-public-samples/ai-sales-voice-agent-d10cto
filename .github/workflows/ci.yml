@@ -1,0 +1,132 @@
+name: CI
+
+# Trigger on push to main/develop and PRs
+on:
+  push:
+    branches: 
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'tsconfig.json'
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      matrix:
+        # Match Node.js version from package.json engines
+        node-version: [18.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          # Fetch full history for SonarCloud analysis
+          fetch-depth: 0
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/backend
+
+      - name: Run linting
+        run: npm run lint
+        working-directory: src/backend
+
+      - name: Run type checks
+        run: npm run check-types
+        working-directory: src/backend
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+        working-directory: src/backend
+        env:
+          CI: true
+          # Required secrets for tests
+          LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          LOGTAIL_SOURCE_TOKEN: ${{ secrets.LOGTAIL_SOURCE_TOKEN }}
+
+      - name: Run security scan
+        uses: snyk/actions/setup@v3
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Run code quality analysis
+        uses: sonarsource/sonarcloud-github-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=docshield-ai-voice-agent
+            -Dsonar.organization=docshield
+            -Dsonar.sources=src
+            -Dsonar.tests=tests
+            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.coverage.exclusions=src/types/**/*,src/**/index.ts
+            -Dsonar.cpd.exclusions=tests/**/*
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: coverage-reports
+          path: src/backend/coverage/
+          retention-days: 14
+
+      - name: Upload test recordings
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-recordings
+          path: src/backend/tests/recordings/
+          retention-days: 1
+
+      # Fail the workflow if coverage thresholds are not met
+      - name: Check coverage thresholds
+        run: |
+          COVERAGE_SUMMARY=$(cat coverage/coverage-summary.json)
+          BRANCHES=$(echo $COVERAGE_SUMMARY | jq '.total.branches.pct')
+          FUNCTIONS=$(echo $COVERAGE_SUMMARY | jq '.total.functions.pct')
+          LINES=$(echo $COVERAGE_SUMMARY | jq '.total.lines.pct')
+          STATEMENTS=$(echo $COVERAGE_SUMMARY | jq '.total.statements.pct')
+          
+          if (( $(echo "$BRANCHES < 80" | bc -l) )) || \
+             (( $(echo "$FUNCTIONS < 80" | bc -l) )) || \
+             (( $(echo "$LINES < 80" | bc -l) )) || \
+             (( $(echo "$STATEMENTS < 80" | bc -l) )); then
+            echo "Coverage thresholds not met"
+            exit 1
+          fi
+        working-directory: src/backend
+        shell: bash
