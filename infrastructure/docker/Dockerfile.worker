@@ -1,0 +1,78 @@
+# ===== Build Stage =====
+FROM node:18-slim AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies and security updates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies with exact versions
+RUN npm ci
+
+# Copy source code
+COPY src/ ./src/
+COPY .env.example ./
+
+# Build TypeScript application
+RUN npm run build
+
+# Prune dev dependencies
+RUN npm prune --production
+
+# ===== Production Stage =====
+FROM node:18-slim AS production
+
+# Set working directory
+WORKDIR /app
+
+# Install production dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    # Required for node-opus
+    libopus-dev \
+    # Required for voice processing
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r docshield && useradd -r -g docshield docshield
+
+# Copy built application and dependencies from builder
+COPY --from=builder --chown=docshield:docshield /app/node_modules ./node_modules
+COPY --from=builder --chown=docshield:docshield /app/dist ./dist
+COPY --from=builder --chown=docshield:docshield /app/package*.json ./
+
+# Set production environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Set memory limits for Node.js
+ENV NODE_OPTIONS="--max-old-space-size=450"
+
+# Configure security headers
+ENV NODE_TLS_REJECT_UNAUTHORIZED=1
+
+# Expose port
+EXPOSE 3000
+
+# Switch to non-root user
+USER docshield
+
+# Health check configuration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node dist/lib/health-check.js || exit 1
+
+# Set resource limits
+LABEL com.heroku.resource.limit.memory="512M"
+
+# Define entry point
+ENTRYPOINT ["node", "dist/index.js"]
