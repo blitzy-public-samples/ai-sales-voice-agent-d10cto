@@ -1,0 +1,44 @@
+# This file defines ownership and required reviewers for different parts of the codebase
+# Format: pattern    required_reviewers
+
+# Backend source code - owned by backend team with tech lead oversight
+src/backend/                                @backend-team @tech-leads
+
+# Integration services - owned by integration team with security oversight
+src/backend/src/integrations/              @integration-team @backend-team @security-team
+
+# Infrastructure code - owned by DevOps with security review
+infrastructure/                            @devops-team @security-team
+
+# CI/CD workflows - owned by DevOps with security review
+.github/workflows/                         @devops-team @security-team
+
+# Voice agent service - owned by AI team with security oversight
+src/backend/src/services/voice-agent.service.ts    @ai-team @backend-team @security-team
+
+# Security configurations - owned by security team with tech lead review
+**/security.config.ts                      @security-team @tech-leads
+
+# Test files - owned by QA team with backend review
+**/test/**                                 @qa-team @backend-team
+
+# Data models - owned by backend team with security review
+src/backend/src/models/                    @backend-team @security-team
+
+# Configuration files - owned by backend team with security and DevOps review
+src/backend/src/config/                    @backend-team @security-team @devops-team
+
+# Documentation - owned by tech leads with backend team input
+docs/                                      @tech-leads @backend-team
+
+# Middleware - owned by security team with backend review
+src/backend/src/middleware/                @security-team @backend-team
+
+# Environment configuration template - owned by security team with DevOps review
+.env.example                               @security-team @devops-team
+
+# Dependencies and package management - owned by security and DevOps teams
+package.json                               @security-team @devops-team @tech-leads
+
+# Default ownership - tech leads review all other files
+*                                          @tech-leads
